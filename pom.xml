@@ -21,6 +21,7 @@
     <scala.version>2.12.6</scala.version>
     <scala.compat.version>2.12</scala.compat.version>
     <spec2.version>4.2.0</spec2.version>
+    <deeplearning4j.version>0.9.1</deeplearning4j.version>
   </properties>
 
   <dependencies>
@@ -28,6 +29,33 @@
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
+    </dependency>
+
+    <!-- DL4J and ND4J Related Dependencies -->
+    <dependency>
+      <groupId>org.nd4j</groupId>
+      <artifactId>nd4j-api</artifactId>
+      <version>${deeplearning4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.nd4j</groupId>
+      <artifactId>nd4j-native</artifactId>
+      <version>${deeplearning4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.deeplearning4j</groupId>
+      <artifactId>deeplearning4j-core</artifactId>
+      <version>${deeplearning4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.datavec</groupId>
+      <artifactId>datavec-api</artifactId>
+      <version>${deeplearning4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.datavec</groupId>
+      <artifactId>datavec-dataframe</artifactId>
+      <version>${deeplearning4j.version}</version>
     </dependency>
 
     <!-- Test -->

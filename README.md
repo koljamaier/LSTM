@@ -14,8 +14,8 @@ Prediction:
 
 The data is available [here](https://datamarket.com/data/set/22u3/international-airline-passengers-monthly-totals-in-thousands-jan-49-dec-60#!ds=22u3&display=line).
 It shows some intersting periodic characteristics over time, while a clear trend is visible:
-<img src="international-airlinge-passengers.png" align=center />
 
+![Screenshot](international-airline-passengers.png "Training Data")
 
 **Demo Result**
 

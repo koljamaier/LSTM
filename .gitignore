@@ -64,4 +64,7 @@ fabric.properties
 # Editor-based Rest Client
 .idea/httpRequests
 
+# data
+src/main/resources/data/train/*
+src/main/resources/data/test/*
 
