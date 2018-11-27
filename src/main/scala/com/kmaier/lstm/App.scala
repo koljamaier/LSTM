@@ -5,7 +5,6 @@ import java.io.{BufferedWriter, File, FileWriter}
 import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader
 import org.datavec.api.split.NumberedFileInputSplit
 import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator
-import org.deeplearning4j.eval.Evaluation
 import org.deeplearning4j.nn.conf.layers.{LSTM, RnnOutputLayer}
 import org.deeplearning4j.nn.conf.{GradientNormalization, MultiLayerConfiguration, NeuralNetConfiguration}
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
@@ -17,8 +16,6 @@ import org.nd4j.linalg.learning.config.Nesterovs
 import org.nd4j.linalg.lossfunctions.LossFunctions
 
 object App {
-
-  //val log : Logger = LoggerFactory.getLogger()
 
   def main(args : Array[String]) {
     val numExamples = 12; // insgesamt gibt es 144 einzelne Datenpunkte
@@ -87,12 +84,13 @@ object App {
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
     val nEpochs = 40;
-    val str = "Test set evaluation at epoch %d: Accuracy = %.2f, F1 = %.2f";
     for (i <- 0 to nEpochs) {
       net.fit(trainData);
 
       //Evaluate on the test set:
-      val evaluation : Evaluation = net.evaluate(testData); // FAILS: occurrences cannot be negative: -54
+      val evaluation = net.evaluateRegression(testData)
+
+      println(s"Test set evaluation ${evaluation.getPrecision}")
 
       trainData.reset();
       testData.reset();
