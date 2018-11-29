@@ -10,6 +10,7 @@ import org.deeplearning4j.nn.conf.{GradientNormalization, MultiLayerConfiguratio
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
 import org.deeplearning4j.nn.weights.WeightInit
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener
+import org.nd4j.evaluation.regression.RegressionEvaluation
 import org.nd4j.linalg.activations.Activation
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize
 import org.nd4j.linalg.learning.config.Nesterovs
@@ -18,8 +19,6 @@ import org.nd4j.linalg.lossfunctions.LossFunctions
 object App {
 
   def main(args : Array[String]) {
-    val numExamples = 12; // insgesamt gibt es 144 einzelne Datenpunkte
-
     val basePath = new File("src/main/resources/data/")
     val trainingFiles = new File(basePath, "train/train_")
     val testFiles = new File(basePath, "test/test_")
@@ -28,6 +27,7 @@ object App {
     val csvLines : List[String] = readCSV(inputString.getAbsolutePath).toList
     val batches : List[List[String]] = csvLines.sliding(12,12).toList
 
+    val numExamples = 12
     val splitPos = math.ceil(numExamples*0.8).toInt
     val (train, test) = batches splitAt splitPos
 
@@ -41,10 +41,10 @@ object App {
     val regression = true
 
     // Training Data
-    val reader = new CSVSequenceRecordReader();
-    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 9));
+    val reader = new CSVSequenceRecordReader()
+    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 9))
 
-    val trainData = new SequenceRecordReaderDataSetIterator(reader, miniBatchSize, numPossibleLabels, labelIndex, regression);
+    val trainData = new SequenceRecordReaderDataSetIterator(reader, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
     //Normalize the training data
     val normalizer = new NormalizerStandardize()
@@ -54,12 +54,11 @@ object App {
     //Use previously collected statistics to normalize on-the-fly. Each DataSet returned by 'trainData' iterator will be normalized
     trainData.setPreProcessor(normalizer);
 
-
     // Test Data
-    val reader1 = new CSVSequenceRecordReader();
-    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 1));
+    val reader1 = new CSVSequenceRecordReader()
+    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 1))
 
-    val testData = new SequenceRecordReaderDataSetIterator(reader1, miniBatchSize, numPossibleLabels, labelIndex, regression);
+    val testData = new SequenceRecordReaderDataSetIterator(reader1, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
     //Use previously collected statistics to normalize on-the-fly. Each DataSet returned by 'trainData' iterator will be normalized
     testData.setPreProcessor(normalizer); //Note that we are using the exact same normalization process as the training data
@@ -73,30 +72,29 @@ object App {
       .gradientNormalizationThreshold(0.5)
       .list()
       .layer(0, new LSTM.Builder().activation(Activation.TANH).nIn(1).nOut(10).build())
-      .layer(1, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT)
-        .activation(Activation.SOFTMAX).nIn(10).nOut(1).build())
-      .build();
+      .layer(1, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
+        .activation(Activation.IDENTITY).nIn(10).nOut(1).build())
+      .build()
 
-    val net : MultiLayerNetwork = new MultiLayerNetwork(conf);
-    net.init();
+    val net : MultiLayerNetwork = new MultiLayerNetwork(conf)
+    net.init()
 
     net.setListeners(new ScoreIterationListener(20));   //Print the score (loss function value) every 20 iterations
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
-    val nEpochs = 40;
+    val nEpochs = 40
     for (i <- 0 to nEpochs) {
-      net.fit(trainData);
-
+      net.fit(trainData)
       //Evaluate on the test set:
-      val evaluation = net.evaluateRegression(testData)
+      val evaluation : RegressionEvaluation = net.evaluateRegression(testData)
+      //println(s"Test set evaluation ${evaluation.getPrecision}, ${evaluation.getCurrentPredictionMean}")
 
-      println(s"Test set evaluation ${evaluation.getPrecision}")
-
-      trainData.reset();
-      testData.reset();
+      trainData.reset()
+      testData.reset()
+      println(s"${net.rnnTimeStep(testData.next().get(0).getFeatures)}")
+      println(evaluation.stats())
     }
-
-    println("----- Example Complete -----");
+    println("----- Example Complete -----")
   }
 
   def writeCSV(batches : List[List[String]], pathname : String) = {

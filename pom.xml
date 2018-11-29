@@ -21,7 +21,7 @@
     <scala.version>2.12.6</scala.version>
     <scala.compat.version>2.12</scala.compat.version>
     <spec2.version>4.2.0</spec2.version>
-    <deeplearning4j.version>0.9.1</deeplearning4j.version>
+    <deeplearning4j.version>1.0.0-beta3</deeplearning4j.version>
   </properties>
 
   <dependencies>
