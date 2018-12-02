@@ -24,10 +24,10 @@ object App {
     val testFiles = new File(basePath, "test/test_")
 
     val inputString = new File(basePath, "international-airline-passengers.csv")
-    val csvLines : List[String] = readCSV(inputString.getAbsolutePath).toList
-    val batches : List[List[String]] = csvLines.sliding(12,12).toList
+    val csvLines : List[(String,Int)] = readCSV(inputString.getAbsolutePath).toList
+    val batches : List[List[(String,Int)]] = csvLines.sliding(1,1).toList // 12 lines a 12 files
 
-    val numExamples = 12
+    val numExamples = batches.length
     val splitPos = math.ceil(numExamples*0.8).toInt
     val (train, test) = batches splitAt splitPos
 
@@ -37,12 +37,12 @@ object App {
 
     val miniBatchSize = 1
     val numPossibleLabels = -1 // for regression
-    val labelIndex = 0 // label is in the first csv column
+    val labelIndex = 1 // label is in the first csv column
     val regression = true
 
     // Training Data
     val reader = new CSVSequenceRecordReader()
-    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 9))
+    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 115))
 
     val trainData = new SequenceRecordReaderDataSetIterator(reader, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -56,7 +56,7 @@ object App {
 
     // Test Data
     val reader1 = new CSVSequenceRecordReader()
-    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 1))
+    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 27))
 
     val testData = new SequenceRecordReaderDataSetIterator(reader1, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -82,26 +82,37 @@ object App {
     net.setListeners(new ScoreIterationListener(20));   //Print the score (loss function value) every 20 iterations
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
-    val nEpochs = 40
+    val nEpochs = 100
     for (i <- 0 to nEpochs) {
       net.fit(trainData)
       //Evaluate on the test set:
       val evaluation : RegressionEvaluation = net.evaluateRegression(testData)
+      println(s"======== EPOCH ${i} ========")
+      println(evaluation.stats())
       //println(s"Test set evaluation ${evaluation.getPrecision}, ${evaluation.getCurrentPredictionMean}")
-
       trainData.reset()
       testData.reset()
-      println(s"${net.rnnTimeStep(testData.next().get(0).getFeatures)}")
-      println(evaluation.stats())
+
+      while(testData.hasNext) {
+        val nextTestPoint = testData.next
+        val nextTestPointFeatures = nextTestPoint.getFeatures
+        val predictionNextTestPoint = net.rnnTimeStep(nextTestPointFeatures)
+        val nextTestPointLabels = nextTestPoint.getLabels
+        normalizer.revert(nextTestPoint) // revert the normalization on this test point
+        println(s"Test point no.: ${nextTestPointFeatures} \n" +
+        s"Prediction is: ${predictionNextTestPoint} \n" +
+        s"Actual value is: ${nextTestPointLabels} \n")
+      }
+      testData.reset()
     }
     println("----- Example Complete -----")
   }
 
-  def writeCSV(batches : List[List[String]], pathname : String) = {
+  def writeCSV(batches : List[List[(String,Int)]], pathname : String) = {
     for((batch, index) <- batches.zipWithIndex) {
       val fileName = new File(pathname+ s"${index}.csv")
       val bw = new BufferedWriter(new FileWriter(fileName))
-      batch.zipWithIndex.map{ case (line, i) =>
+      batch.map{ case (line, i) =>
         val cols = (s"${line},${i}").split(",").map(_.trim)
         bw.write(List(cols(2),cols(1)).mkString(","))
         bw.newLine()
@@ -114,10 +125,10 @@ object App {
   def readCSV(fileName: String) = {
     val bufferedSource = io.Source.fromFile(fileName)
     for {
-      line <- bufferedSource.getLines.drop(1)
+      (line, index) <- bufferedSource.getLines.drop(1).zipWithIndex
       cols = line.split(",").map(_.trim)
-      if(cols.length > 1)
-    } yield line
+      if(cols.length > 1) // neglect lines that don't hold data
+    } yield (line,index)
   }
 
 }
