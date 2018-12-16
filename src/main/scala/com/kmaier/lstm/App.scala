@@ -25,7 +25,7 @@ object App {
 
     val inputString = new File(basePath, "international-airline-passengers.csv")
     val csvLines : List[(String,Int)] = readCSV(inputString.getAbsolutePath).toList
-    val batches : List[List[(String,Int)]] = csvLines.sliding(1,1).toList // 12 lines a 12 files
+    val batches : List[List[(String,Int)]] = csvLines.sliding(1,1).toList // .sliding(12,12) results in batches of 12 months
 
     val numExamples = batches.length
     val splitPos = math.ceil(numExamples*0.8).toInt
@@ -89,7 +89,6 @@ object App {
       val evaluation : RegressionEvaluation = net.evaluateRegression(testData)
       println(s"======== EPOCH ${i} ========")
       println(evaluation.stats())
-      //println(s"Test set evaluation ${evaluation.getPrecision}, ${evaluation.getCurrentPredictionMean}")
       trainData.reset()
       testData.reset()
 
@@ -108,6 +107,11 @@ object App {
     println("----- Example Complete -----")
   }
 
+  /**
+    * Writes .csv files (train/test) according to the batches inputs
+    * @param batches
+    * @param pathname
+    */
   def writeCSV(batches : List[List[(String,Int)]], pathname : String) = {
     for((batch, index) <- batches.zipWithIndex) {
       val fileName = new File(pathname+ s"${index}.csv")
@@ -122,8 +126,13 @@ object App {
     }
   }
 
+  /**
+    *
+    * @param fileName
+    * @return Iterator over all lines found in the .csv with an absolute index
+    */
   def readCSV(fileName: String) = {
-    val bufferedSource = io.Source.fromFile(fileName)
+    val bufferedSource = scala.io.Source.fromFile(fileName)
     for {
       (line, index) <- bufferedSource.getLines.drop(1).zipWithIndex
       cols = line.split(",").map(_.trim)

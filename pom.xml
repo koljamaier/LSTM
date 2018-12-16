@@ -58,6 +58,20 @@
       <version>${deeplearning4j.version}</version>
     </dependency>
 
+    <!-- plotting -->
+      <dependency>
+          <groupId>org.scalanlp</groupId>
+          <artifactId>breeze_2.10</artifactId> <!-- or 2.11 -->
+          <version>0.12</version>
+      </dependency>
+
+    <dependency>
+      <groupId>org.scalanlp</groupId>
+      <artifactId>breeze-viz_2.10</artifactId>
+      <version>1.0-RC2</version>
+    </dependency>
+
+
     <!-- Test -->
     <dependency>
       <groupId>junit</groupId>
