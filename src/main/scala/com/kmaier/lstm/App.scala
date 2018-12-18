@@ -2,6 +2,7 @@ package com.kmaier.lstm
 
 import java.io.{BufferedWriter, File, FileWriter}
 
+import com.kmaier.lstm.plotting.PlotUtil
 import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader
 import org.datavec.api.split.NumberedFileInputSplit
 import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator
@@ -92,6 +93,9 @@ object App {
       trainData.reset()
       testData.reset()
 
+      var predicts : Array[Double] = Array()
+      var actuals : Array[Double] = Array()
+
       while(testData.hasNext) {
         val nextTestPoint = testData.next
         val nextTestPointFeatures = nextTestPoint.getFeatures
@@ -101,9 +105,16 @@ object App {
         println(s"Test point no.: ${nextTestPointFeatures} \n" +
         s"Prediction is: ${predictionNextTestPoint} \n" +
         s"Actual value is: ${nextTestPointLabels} \n")
+        predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
+        actuals = actuals :+ nextTestPointLabels.getDouble(0L)
+        println("test done")
       }
+      PlotUtil.plot(predicts,actuals, "testcat")
+
+
       testData.reset()
     }
+
     println("----- Example Complete -----")
   }
 
