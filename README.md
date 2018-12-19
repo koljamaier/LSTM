@@ -12,4 +12,12 @@ It shows some intersting periodic characteristics over time, while a clear trend
 
 **Demo Result**
 
-**Test Link**
+My LSTM Model seems to be to simple and only predicts a (more or less) constant, even though there's a positive trend!
+
+![Screenshot](epoch0.png "Initial Prediction")
+
+![Screenshot](epoch60.png "Initial Prediction")
+
+![Screenshot](epoch100.png "Initial Prediction")
+
+While the predictions absolute error gets smaller and smaller, its still far away from good. Help!

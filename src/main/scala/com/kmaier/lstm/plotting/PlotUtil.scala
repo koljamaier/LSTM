@@ -6,9 +6,8 @@ import org.jfree.chart.axis.{NumberAxis, NumberTickUnit}
 import org.jfree.chart.plot.PlotOrientation
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection}
 
-
 object PlotUtil {
-  def plot(predicts: Array[Double], actuals: Array[Double], name: String): Unit = {
+  def plot(predicts: Array[Double], actuals: Array[Double], name: String, epoch: Int): Unit = {
 
     val index = (0 until predicts.length).toList
 
@@ -20,7 +19,7 @@ object PlotUtil {
     addSeries(dataSet, index, predicts, "Predicts")
     addSeries(dataSet, index, actuals, "Actuals")
 
-    val chart = ChartFactory.createXYLineChart("Prediction Result", // chart title
+    val chart = ChartFactory.createXYLineChart(s"Prediction for training epoch ${epoch}", // chart title
       "Index", // x axis label
       name, // y axis label
       dataSet, // data

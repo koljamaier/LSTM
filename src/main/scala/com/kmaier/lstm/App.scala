@@ -107,10 +107,9 @@ object App {
         s"Actual value is: ${nextTestPointLabels} \n")
         predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
         actuals = actuals :+ nextTestPointLabels.getDouble(0L)
-        println("test done")
       }
-      PlotUtil.plot(predicts,actuals, "testcat")
-
+      if(i % 20 == 0)
+        PlotUtil.plot(predicts, actuals, s"Test Run", i)
 
       testData.reset()
     }
