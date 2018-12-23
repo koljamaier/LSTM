@@ -11,8 +11,12 @@ import org.deeplearning4j.nn.conf.{GradientNormalization, MultiLayerConfiguratio
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
 import org.deeplearning4j.nn.weights.WeightInit
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener
+import org.deeplearning4j.ui.api.UIServer
+import org.deeplearning4j.ui.stats.StatsListener
+import org.deeplearning4j.ui.storage.InMemoryStatsStorage
 import org.nd4j.evaluation.regression.RegressionEvaluation
 import org.nd4j.linalg.activations.Activation
+import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize
 import org.nd4j.linalg.learning.config.Nesterovs
 import org.nd4j.linalg.lossfunctions.LossFunctions
@@ -42,6 +46,7 @@ object App {
     val regression = true
 
     // Training Data
+    // each line in the csv data represents one time step, with the first row as earliest time series observation
     val reader = new CSVSequenceRecordReader()
     reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 115))
 
@@ -72,18 +77,34 @@ object App {
       .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)  //Not always required, but helps with this data set
       .gradientNormalizationThreshold(0.5)
       .list()
-      .layer(0, new LSTM.Builder().activation(Activation.TANH).nIn(1).nOut(10).build())
-      .layer(1, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-        .activation(Activation.IDENTITY).nIn(10).nOut(1).build())
+      .layer(0, new LSTM.Builder().activation(Activation.TANH).nIn(1).nOut(30).build())
+      .layer(1, new LSTM.Builder().activation(Activation.TANH).nIn(30).nOut(10).build())
+      .layer(2, new LSTM.Builder().activation(Activation.TANH).nIn(10).nOut(5).build())
+      .layer(3, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
+        .activation(Activation.IDENTITY).nIn(5).nOut(1).build())
       .build()
 
     val net : MultiLayerNetwork = new MultiLayerNetwork(conf)
     net.init()
 
-    net.setListeners(new ScoreIterationListener(20));   //Print the score (loss function value) every 20 iterations
+    //net.setListeners(new ScoreIterationListener(20));   //Print the score (loss function value) every 20 iterations
+
+    //Initialize the user interface backend
+    val uiServer = UIServer.getInstance();
+
+    //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
+    val statsStorage = new InMemoryStatsStorage();         //Alternative: new FileStatsStorage(File), for saving and loading later
+
+    //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
+    uiServer.attach(statsStorage)
+
+    //Then add the StatsListener to collect this information from the network, as it trains
+    net.setListeners(new StatsListener(statsStorage));
+
+    net.addListeners(new ScoreIterationListener(100));
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
-    val nEpochs = 100
+    val nEpochs = 20000
     for (i <- 0 to nEpochs) {
       net.fit(trainData)
       //Evaluate on the test set:
@@ -97,9 +118,11 @@ object App {
       var actuals : Array[Double] = Array()
 
       while(testData.hasNext) {
+        //net.rnnClearPreviousState()
         val nextTestPoint = testData.next
         val nextTestPointFeatures = nextTestPoint.getFeatures
-        val predictionNextTestPoint = net.rnnTimeStep(nextTestPointFeatures)
+        val predictionNextTestPoint : INDArray = net.output(nextTestPointFeatures)//net.rnnTimeStep(nextTestPointFeatures) // net.output(nextTestPointFeatures)
+
         val nextTestPointLabels = nextTestPoint.getLabels
         normalizer.revert(nextTestPoint) // revert the normalization on this test point
         println(s"Test point no.: ${nextTestPointFeatures} \n" +
@@ -108,10 +131,11 @@ object App {
         predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
         actuals = actuals :+ nextTestPointLabels.getDouble(0L)
       }
-      if(i % 20 == 0)
+      if(i % 2000 == 0)
         PlotUtil.plot(predicts, actuals, s"Test Run", i)
 
       testData.reset()
+      //net.rnnClearPreviousState()
     }
 
     println("----- Example Complete -----")

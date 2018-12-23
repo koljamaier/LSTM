@@ -18,8 +18,8 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <encoding>UTF-8</encoding>
-    <scala.version>2.12.6</scala.version>
-    <scala.compat.version>2.12</scala.compat.version>
+    <scala.version>2.11.6</scala.version>
+    <scala.compat.version>2.11</scala.compat.version>
     <spec2.version>4.2.0</spec2.version>
     <deeplearning4j.version>1.0.0-beta3</deeplearning4j.version>
   </properties>
@@ -57,6 +57,11 @@
       <artifactId>datavec-dataframe</artifactId>
       <version>${deeplearning4j.version}</version>
     </dependency>
+      <dependency>
+          <groupId>org.deeplearning4j</groupId>
+          <artifactId>deeplearning4j-ui_2.11</artifactId>
+          <version>${deeplearning4j.version}</version>
+      </dependency>
 
     <!-- plotting -->
       <dependency>
