@@ -29,8 +29,9 @@ object App {
     val testFiles = new File(basePath, "test/test_")
 
     val inputString = new File(basePath, "international-airline-passengers.csv")
-    val csvLines : List[(String,Int)] = readCSV(inputString.getAbsolutePath).toList
-    val batches : List[List[(String,Int)]] = csvLines.sliding(1,1).toList // .sliding(12,12) results in batches of 12 months
+    val csvLines : List[String] = readCSV(inputString.getAbsolutePath).toList
+    val csvLines1 = csvLines zip csvLines.tail
+    val batches : List[List[(String,String)]] = csvLines1.sliding(1,1).toList // .sliding(12,12) results in batches of 12 months
 
     val numExamples = batches.length
     val splitPos = math.ceil(numExamples*0.8).toInt
@@ -48,7 +49,7 @@ object App {
     // Training Data
     // each line in the csv data represents one time step, with the first row as earliest time series observation
     val reader = new CSVSequenceRecordReader()
-    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 115))
+    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 114))
 
     val trainData = new SequenceRecordReaderDataSetIterator(reader, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -62,7 +63,7 @@ object App {
 
     // Test Data
     val reader1 = new CSVSequenceRecordReader()
-    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 27))
+    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 26))
 
     val testData = new SequenceRecordReaderDataSetIterator(reader1, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -77,11 +78,14 @@ object App {
       .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)  //Not always required, but helps with this data set
       .gradientNormalizationThreshold(0.5)
       .list()
-      .layer(0, new LSTM.Builder().activation(Activation.TANH).nIn(1).nOut(30).build())
-      .layer(1, new LSTM.Builder().activation(Activation.TANH).nIn(30).nOut(10).build())
-      .layer(2, new LSTM.Builder().activation(Activation.TANH).nIn(10).nOut(5).build())
-      .layer(3, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-        .activation(Activation.IDENTITY).nIn(5).nOut(1).build())
+      .layer(0, new LSTM.Builder()
+        .activation(Activation.TANH)
+        .nIn(1)
+        .nOut(10).build())
+      .layer(1, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
+        .activation(Activation.IDENTITY)
+        .nIn(10)
+        .nOut(1).build())
       .build()
 
     val net : MultiLayerNetwork = new MultiLayerNetwork(conf)
@@ -91,14 +95,8 @@ object App {
 
     //Initialize the user interface backend
     val uiServer = UIServer.getInstance();
-
-    //Configure where the network information (gradients, score vs. time etc) is to be stored. Here: store in memory.
-    val statsStorage = new InMemoryStatsStorage();         //Alternative: new FileStatsStorage(File), for saving and loading later
-
-    //Attach the StatsStorage instance to the UI: this allows the contents of the StatsStorage to be visualized
+    val statsStorage = new InMemoryStatsStorage();
     uiServer.attach(statsStorage)
-
-    //Then add the StatsListener to collect this information from the network, as it trains
     net.setListeners(new StatsListener(statsStorage));
 
     net.addListeners(new ScoreIterationListener(100));
@@ -121,17 +119,17 @@ object App {
         //net.rnnClearPreviousState()
         val nextTestPoint = testData.next
         val nextTestPointFeatures = nextTestPoint.getFeatures
-        val predictionNextTestPoint : INDArray = net.output(nextTestPointFeatures)//net.rnnTimeStep(nextTestPointFeatures) // net.output(nextTestPointFeatures)
+        val predictionNextTestPoint : INDArray = net.rnnTimeStep(nextTestPointFeatures)//net.rnnTimeStep(nextTestPointFeatures) // net.output(nextTestPointFeatures)
 
         val nextTestPointLabels = nextTestPoint.getLabels
-        normalizer.revert(nextTestPoint) // revert the normalization on this test point
+        normalizer.revert(nextTestPoint) // revert the normalization of this test point
         println(s"Test point no.: ${nextTestPointFeatures} \n" +
         s"Prediction is: ${predictionNextTestPoint} \n" +
         s"Actual value is: ${nextTestPointLabels} \n")
         predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
         actuals = actuals :+ nextTestPointLabels.getDouble(0L)
       }
-      if(i % 2000 == 0)
+      if(i % 1000 == 0)
         PlotUtil.plot(predicts, actuals, s"Test Run", i)
 
       testData.reset()
@@ -146,13 +144,13 @@ object App {
     * @param batches
     * @param pathname
     */
-  def writeCSV(batches : List[List[(String,Int)]], pathname : String) = {
+  def writeCSV(batches : List[List[(String,String)]], pathname : String) = {
     for((batch, index) <- batches.zipWithIndex) {
       val fileName = new File(pathname+ s"${index}.csv")
       val bw = new BufferedWriter(new FileWriter(fileName))
       batch.map{ case (line, i) =>
         val cols = (s"${line},${i}").split(",").map(_.trim)
-        bw.write(List(cols(2),cols(1)).mkString(","))
+        bw.write(List(cols(0),cols(1)).mkString(","))
         bw.newLine()
         //Files.write(Paths.get(pathname+(index)+".csv"), cols(1).getBytes())
       }
@@ -168,10 +166,10 @@ object App {
   def readCSV(fileName: String) = {
     val bufferedSource = scala.io.Source.fromFile(fileName)
     for {
-      (line, index) <- bufferedSource.getLines.drop(1).zipWithIndex
+      line <- bufferedSource.getLines.drop(1)
       cols = line.split(",").map(_.trim)
       if(cols.length > 1) // neglect lines that don't hold data
-    } yield (line,index)
+    } yield cols(1)
   }
 
 }
