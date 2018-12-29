@@ -10,14 +10,15 @@ It shows some intersting periodic characteristics over time, while a clear trend
 
 ![Screenshot](international-airline-passengers.png "Training Data")
 
-**Demo Result**
+**Results**
 
-My LSTM Model seems to be to simple and only predicts a (more or less) constant, even though there's a positive trend!
+My LSTM fits the training data quite well (wow!...), but isn't quite good in predicting the test data:
 
 ![Screenshot](epoch0.png "Initial Prediction")
 
-![Screenshot](epoch60.png "Initial Prediction")
-
 ![Screenshot](epoch100.png "Initial Prediction")
 
-While the predictions absolute error gets smaller and smaller, its still far away from good. Help!
+![Screenshot](epoch500.png "Initial Prediction")
+
+Also you can see the metrics from DL4J UI-Server:
+![Screenshot](ui_server.png "Initial Prediction")

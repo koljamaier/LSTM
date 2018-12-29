@@ -7,7 +7,7 @@ import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader
 import org.datavec.api.split.NumberedFileInputSplit
 import org.deeplearning4j.datasets.datavec.SequenceRecordReaderDataSetIterator
 import org.deeplearning4j.nn.conf.layers.{LSTM, RnnOutputLayer}
-import org.deeplearning4j.nn.conf.{GradientNormalization, MultiLayerConfiguration, NeuralNetConfiguration}
+import org.deeplearning4j.nn.conf.{MultiLayerConfiguration, NeuralNetConfiguration}
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
 import org.deeplearning4j.nn.weights.WeightInit
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener
@@ -18,7 +18,7 @@ import org.nd4j.evaluation.regression.RegressionEvaluation
 import org.nd4j.linalg.activations.Activation
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize
-import org.nd4j.linalg.learning.config.Nesterovs
+import org.nd4j.linalg.learning.config.Adam
 import org.nd4j.linalg.lossfunctions.LossFunctions
 
 object App {
@@ -73,18 +73,23 @@ object App {
     // ----- Configure the network -----
     val conf : MultiLayerConfiguration = new NeuralNetConfiguration.Builder()
       .seed(123)    //Random number generator seed for improved repeatability. Optional.
-      .weightInit(WeightInit.XAVIER)
-      .updater(new Nesterovs(0.005))
-      .gradientNormalization(GradientNormalization.ClipElementWiseAbsoluteValue)  //Not always required, but helps with this data set
-      .gradientNormalizationThreshold(0.5)
+      .weightInit(WeightInit.RELU)
+      //.dropOut(0.01)
+      //.l1(0.01)
+      //.l2(0.01)
+      .updater(new Adam(0.001))
       .list()
       .layer(0, new LSTM.Builder()
         .activation(Activation.TANH)
         .nIn(1)
-        .nOut(10).build())
-      .layer(1, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
-        .activation(Activation.IDENTITY)
-        .nIn(10)
+        .nOut(200).build())
+      .layer(1, new LSTM.Builder()
+        .activation(Activation.TANH)
+        .nIn(200)
+        .nOut(40).build())
+      .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE)
+        .activation(Activation.RELU)
+        .nIn(40)
         .nOut(1).build())
       .build()
 
@@ -115,25 +120,37 @@ object App {
       var predicts : Array[Double] = Array()
       var actuals : Array[Double] = Array()
 
+      while(trainData.hasNext) {
+        val nextTestPoint = trainData.next
+        val nextTestPointFeatures = nextTestPoint.getFeatures
+        val predictionNextTestPoint : INDArray = net.output(nextTestPointFeatures)//net.rnnTimeStep(nextTestPointFeatures) // net.output(nextTestPointFeatures)
+
+        val nextTestPointLabels = nextTestPoint.getLabels
+        normalizer.revert(nextTestPoint) // revert the normalization of this test point
+        println(s"Test point no.: ${nextTestPointFeatures} \n" +
+          s"Prediction is: ${predictionNextTestPoint} \n" +
+          s"Actual value is: ${nextTestPointLabels} \n")
+        predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
+        actuals = actuals :+ nextTestPointLabels.getDouble(0L)
+      }
+
+      // visualize test data / predictions
       while(testData.hasNext) {
-        //net.rnnClearPreviousState()
         val nextTestPoint = testData.next
         val nextTestPointFeatures = nextTestPoint.getFeatures
         val predictionNextTestPoint : INDArray = net.rnnTimeStep(nextTestPointFeatures)//net.rnnTimeStep(nextTestPointFeatures) // net.output(nextTestPointFeatures)
 
         val nextTestPointLabels = nextTestPoint.getLabels
         normalizer.revert(nextTestPoint) // revert the normalization of this test point
-        println(s"Test point no.: ${nextTestPointFeatures} \n" +
-        s"Prediction is: ${predictionNextTestPoint} \n" +
-        s"Actual value is: ${nextTestPointLabels} \n")
         predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
         actuals = actuals :+ nextTestPointLabels.getDouble(0L)
       }
-      if(i % 1000 == 0)
+      if(i % 100 == 0)
         PlotUtil.plot(predicts, actuals, s"Test Run", i)
 
       testData.reset()
-      //net.rnnClearPreviousState()
+      trainData.reset()
+      net.rnnClearPreviousState()
     }
 
     println("----- Example Complete -----")
