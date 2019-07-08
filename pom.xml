@@ -22,6 +22,7 @@
     <scala.compat.version>2.11</scala.compat.version>
     <spec2.version>4.2.0</spec2.version>
     <deeplearning4j.version>1.0.0-beta3</deeplearning4j.version>
+    <mlflow.version>0.9.1</mlflow.version>
   </properties>
 
   <dependencies>
@@ -29,6 +30,14 @@
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
+    </dependency>
+
+    <!-- MLFlow deps -->
+    <dependency>
+      <type>jar</type>
+      <groupId>org.mlflow</groupId>
+      <artifactId>mlflow-client</artifactId>
+      <version>${mlflow.version}</version>
     </dependency>
 
     <!-- DL4J and ND4J Related Dependencies -->

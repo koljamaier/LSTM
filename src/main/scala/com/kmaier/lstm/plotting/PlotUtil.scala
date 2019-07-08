@@ -1,10 +1,13 @@
 package com.kmaier.lstm.plotting
 
 import javax.swing._
-import org.jfree.chart.{ChartFactory, ChartPanel}
+import org.jfree.chart.{ChartFactory, ChartPanel, ChartUtils}
 import org.jfree.chart.axis.{NumberAxis, NumberTickUnit}
 import org.jfree.chart.plot.PlotOrientation
 import org.jfree.data.xy.{XYSeries, XYSeriesCollection}
+import java.io.{File, FileOutputStream, OutputStream}
+
+import javax.imageio.ImageIO
 
 object PlotUtil {
   def plot(predicts: Array[Double], actuals: Array[Double], name: String, epoch: Int): Unit = {
@@ -46,6 +49,12 @@ object PlotUtil {
     f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
     f.pack()
     f.setVisible(true)
+
+    val file = new File(s"src/main/resources/tmp/lstm_iteration_${epoch}.png")
+    //OutputStream out = new FileOutputStream(chart)
+    //ChartUtils.writeChartAsPNG(file, chart, 600, 400)
+    ImageIO.write(chart.createBufferedImage(600,400, null), "png", file)
+    println(s"Saved ${file.toString}")
   }
 
   private def addSeries(dataSet: XYSeriesCollection, x: List[Int], y: Array[Double], label: String): Unit = {

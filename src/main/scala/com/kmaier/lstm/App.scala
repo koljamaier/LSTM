@@ -1,7 +1,8 @@
 package com.kmaier.lstm
 
-import java.io.{BufferedWriter, File, FileWriter}
+import java.io.{BufferedWriter, File, FileWriter, IOException}
 
+import com.kmaier.lstm.mlflow.MLflowUtils
 import com.kmaier.lstm.plotting.PlotUtil
 import org.datavec.api.records.reader.impl.csv.CSVSequenceRecordReader
 import org.datavec.api.split.NumberedFileInputSplit
@@ -20,6 +21,8 @@ import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.dataset.api.preprocessor.NormalizerStandardize
 import org.nd4j.linalg.learning.config.Adam
 import org.nd4j.linalg.lossfunctions.LossFunctions
+import org.mlflow.tracking.MlflowClient
+import org.mlflow.tracking.creds.BasicMlflowHostCreds
 
 object App {
 
@@ -106,6 +109,17 @@ object App {
 
     net.addListeners(new ScoreIterationListener(100));
 
+    val trackingUri = "http://localhost:5000"
+    val token : String = null
+    val experimentName : String = "dl4j_experiment"
+    val mlflowClient = MLflowUtils.createMlflowClient(trackingUri, token)
+    val experimentId = MLflowUtils.getOrCreateExperimentId(mlflowClient, experimentName)
+    val sourceName = (getClass().getSimpleName()+".scala").replace("$","")
+    //val runInfo = mlflowClient.getRun(runId).getInfo
+    val runInfo = mlflowClient.createRun(experimentId, sourceName)
+    val runId = runInfo.getRunUuid()
+    mlflowClient.logParam(runId, "runOrigin","testsetsete")
+
     // ----- Train the network, evaluating the test set performance at each epoch -----
     val nEpochs = 20000
     for (i <- 0 to nEpochs) {
@@ -116,6 +130,8 @@ object App {
       println(evaluation.stats())
       trainData.reset()
       testData.reset()
+      // caution: new updates will overwrite the old state of variable i. Hence you will only see the last state in the mlflow ui
+      mlflowClient.logParam(runId, "runOrigin",s"${i}")
 
       var predicts : Array[Double] = Array()
       var actuals : Array[Double] = Array()
@@ -145,8 +161,11 @@ object App {
         predicts = predicts :+ predictionNextTestPoint.getDouble(0L)
         actuals = actuals :+ nextTestPointLabels.getDouble(0L)
       }
-      if(i % 100 == 0)
+      if(i % 100 == 0) {
         PlotUtil.plot(predicts, actuals, s"Test Run", i)
+        println(s"Logging picture artifact src/main/resources/tmp/lstm_iteration_${i}.png to mlflow")
+        mlflowClient.logArtifact(runId, new File(s"src/main/resources/tmp/lstm_iteration_${i}.png"))
+      }
 
       testData.reset()
       trainData.reset()
