@@ -121,7 +121,8 @@ object App {
     mlflowClient.logParam(runId, "runOrigin","testsetsete")
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
-    val nEpochs = 20000
+    val nEpochs = 50
+    mlflowClient.logMetric(runId, "nEpochs", nEpochs)
     for (i <- 0 to nEpochs) {
       net.fit(trainData)
       //Evaluate on the test set:
@@ -173,6 +174,16 @@ object App {
     }
 
     println("----- Example Complete -----")
+
+      //Save the model
+    val locationToSave = new File(s"src/main/resources/tmp/savedModel.zip");      //Where to save the network. Note: the file is in .zip format - can be opened externally
+    val saveUpdater = true;                                             //Updater: i.e., the state for Momentum, RMSProp, Adagrad etc. Save this if you want to train your network more in the future
+    net.save(locationToSave, saveUpdater);
+    mlflowClient.logArtifact(runId, locationToSave)
+
+    //mlflowClient.logArtifact(runId, new File(s"src/main/resources/tmp/savedModel.zip"))
+    //model.write.overwrite().save(modelPath)
+
   }
 
   /**
