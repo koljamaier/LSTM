@@ -1,6 +1,6 @@
 package com.kmaier.lstm
 
-import java.io.{BufferedWriter, File, FileWriter, IOException}
+import java.io._
 
 import com.kmaier.lstm.mlflow.MLflowUtils
 import com.kmaier.lstm.plotting.PlotUtil
@@ -27,12 +27,38 @@ import org.mlflow.tracking.creds.BasicMlflowHostCreds
 object App {
 
   def main(args : Array[String]) {
-    val basePath = new File("src/main/resources/data/")
-    val trainingFiles = new File(basePath, "train/train_")
-    val testFiles = new File(basePath, "test/test_")
+    val basePath = new File("/tmp/");
 
-    val inputString = new File(basePath, "international-airline-passengers.csv")
-    val csvLines : List[String] = readCSV(inputString.getAbsolutePath).toList
+    //val basePath = new File("src/main/resources/data/")
+    val trainingFiles = new File(basePath, "train/")
+    trainingFiles.mkdir()
+    //val trainingFiles = getClass().getResourceAsStream("/data/data")
+
+    //val trainingPath = getClass().getResource("/data/train/").toURI;
+    //val trainingPath = "/tmp/"
+
+
+    val testFiles = new File(basePath, "test/")
+    testFiles.mkdir()
+
+
+
+    //val inputString = new File(basePath, "international-airline-passengers.csv")
+    //val inputString = getClass().getResource("/international-airline-passengers.csv").getFile
+    //val inputString = new File(getClass().getResource("/international-airline-passengers.csv").getPath)
+    //val inputString = new File(new File(getClass.getProtectionDomain().getCodeSource().getLocation().toURI()), "international-airline-passengers.csv").getPath()\
+
+    val inputString = getClass().getResourceAsStream("/data/international-airline-passengers.csv");
+
+    //val is = getClass().getResourceAsStream("3Columns.csv");
+    //val isr = new InputStreamReader(is);
+    //val br = new BufferedReader(isr);
+    //br.readLine()
+
+
+    println(inputString)
+
+    val csvLines : List[String] = readCSV(inputString).toList
     val csvLines1 = csvLines zip csvLines.tail
     val batches : List[List[(String,String)]] = csvLines1.sliding(1,1).toList // .sliding(12,12) results in batches of 12 months
 
@@ -41,8 +67,9 @@ object App {
     val (train, test) = batches splitAt splitPos
 
     // write csv's
-    writeCSV(train, trainingFiles.getAbsolutePath)
-    writeCSV(test, testFiles.getAbsolutePath)
+    //println(trainingPath)
+    writeCSV(train, trainingFiles.getAbsolutePath+"/train_")
+    writeCSV(test, testFiles.getAbsolutePath+"/test_")
 
     val miniBatchSize = 1
     val numPossibleLabels = -1 // for regression
@@ -52,7 +79,8 @@ object App {
     // Training Data
     // each line in the csv data represents one time step, with the first row as earliest time series observation
     val reader = new CSVSequenceRecordReader()
-    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}%d.csv", 0, 114))
+    reader.initialize(new NumberedFileInputSplit(s"${trainingFiles.getAbsolutePath}/train_%d.csv", 0, 114))
+    //reader.initialize(new NumberedFileInputSplit(s"${trainingPath}train_%d.csv", 0, 114))
 
     val trainData = new SequenceRecordReaderDataSetIterator(reader, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -66,7 +94,7 @@ object App {
 
     // Test Data
     val reader1 = new CSVSequenceRecordReader()
-    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}%d.csv", 0, 26))
+    reader1.initialize(new NumberedFileInputSplit(s"${testFiles.getAbsolutePath}/test_%d.csv", 0, 26))
 
     val testData = new SequenceRecordReaderDataSetIterator(reader1, miniBatchSize, numPossibleLabels, labelIndex, regression)
 
@@ -109,7 +137,7 @@ object App {
 
     net.addListeners(new ScoreIterationListener(100));
 
-    val trackingUri = "http://localhost:5000"
+    val trackingUri = "http://host.docker.internal:5000"
     val token : String = null
     val experimentName : String = "dl4j_experiment"
     val mlflowClient = MLflowUtils.createMlflowClient(trackingUri, token)
@@ -121,7 +149,7 @@ object App {
     mlflowClient.logParam(runId, "runOrigin","testsetsete")
 
     // ----- Train the network, evaluating the test set performance at each epoch -----
-    val nEpochs = 50
+    val nEpochs = 500
     mlflowClient.logMetric(runId, "nEpochs", nEpochs)
     for (i <- 0 to nEpochs) {
       net.fit(trainData)
@@ -165,7 +193,7 @@ object App {
       if(i % 100 == 0) {
         PlotUtil.plot(predicts, actuals, s"Test Run", i)
         println(s"Logging picture artifact src/main/resources/tmp/lstm_iteration_${i}.png to mlflow")
-        mlflowClient.logArtifact(runId, new File(s"src/main/resources/tmp/lstm_iteration_${i}.png"))
+        mlflowClient.logArtifact(runId, new File(s"/tmp/lstm_iteration_${i}.png"))
       }
 
       testData.reset()
@@ -176,7 +204,7 @@ object App {
     println("----- Example Complete -----")
 
       //Save the model
-    val locationToSave = new File(s"src/main/resources/tmp/savedModel.zip");      //Where to save the network. Note: the file is in .zip format - can be opened externally
+    val locationToSave = new File(s"/tmp/savedModel.zip");      //Where to save the network. Note: the file is in .zip format - can be opened externally
     val saveUpdater = true;                                             //Updater: i.e., the state for Momentum, RMSProp, Adagrad etc. Save this if you want to train your network more in the future
     net.save(locationToSave, saveUpdater);
     mlflowClient.logArtifact(runId, locationToSave)
@@ -193,7 +221,10 @@ object App {
     */
   def writeCSV(batches : List[List[(String,String)]], pathname : String) = {
     for((batch, index) <- batches.zipWithIndex) {
-      val fileName = new File(pathname+ s"${index}.csv")
+      //val trainingPath = getClass().getResourceAsStream("/data/train");
+      //val trainingPath = "/data/train/train_"
+      //val trainingPath = "/tmp/"
+      val fileName = new File(pathname + s"${index}.csv")
       val bw = new BufferedWriter(new FileWriter(fileName))
       batch.map{ case (line, i) =>
         val cols = (s"${line},${i}").split(",").map(_.trim)
@@ -210,8 +241,9 @@ object App {
     * @param fileName
     * @return Iterator over all lines found in the .csv with an absolute index
     */
-  def readCSV(fileName: String) = {
-    val bufferedSource = scala.io.Source.fromFile(fileName)
+  def readCSV(fileName: InputStream) = {
+    //val bufferedSource = scala.io.Source.fromFile(fileName)
+    val bufferedSource = scala.io.Source.fromInputStream(fileName)
     for {
       line <- bufferedSource.getLines.drop(1)
       cols = line.split(",").map(_.trim)

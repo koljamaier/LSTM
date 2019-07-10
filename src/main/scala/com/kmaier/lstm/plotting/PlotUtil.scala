@@ -44,13 +44,13 @@ object PlotUtil {
     rangeAxis.setRange(min, max)
     rangeAxis.setTickUnit(new NumberTickUnit(50))
     val panel = new ChartPanel(chart)
-    val f = new JFrame
-    f.add(panel)
-    f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-    f.pack()
-    f.setVisible(true)
+    //val f = new JFrame
+    //f.add(panel)
+    //f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+    //f.pack()
+    //f.setVisible(true)
 
-    val file = new File(s"src/main/resources/tmp/lstm_iteration_${epoch}.png")
+    val file = new File(s"/tmp/lstm_iteration_${epoch}.png")
     //OutputStream out = new FileOutputStream(chart)
     //ChartUtils.writeChartAsPNG(file, chart, 600, 400)
     ImageIO.write(chart.createBufferedImage(600,400, null), "png", file)

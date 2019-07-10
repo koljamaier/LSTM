@@ -1,0 +1,11 @@
+name: docker-example
+
+docker_env:
+  image:  lstm/lstm
+
+entry_points:
+  main:
+    parameters:
+      alpha: {type: float, default: 0.1}
+      l1_ratio: {type: float, default: 0.1}
+    command: "java -jar /opt/random-generator.jar"
